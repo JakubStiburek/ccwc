@@ -1,12 +1,15 @@
 use std::fs::File;
-use std::io::{self, Read, stdin};
+use std::io::{self, BufRead, Read, stdin};
 use clap::Parser;
 
 #[derive(Parser, Debug)]
 #[command(author = "Jakub Stibůrek", version = "1.0", about = "wc util clone", long_about = None)]
 struct CCWCArgs {
-    #[arg(short)]
+    #[arg(short, help = "Print the count of bytes in the file")]
     count_bytes: bool,
+
+    #[arg(short, help = "Print the count of lines in the file")]
+    lines: bool,
 
     #[arg(required = true)]
     file_path: Option<std::path::PathBuf>,
@@ -35,6 +38,11 @@ fn main() -> io::Result<()> {
         result.push_str(&bytes_count.to_string());
     }
 
+    if args.lines {
+        let lines_count = count_lines_in_file(&mut file)?;
+        result.push_str(&format!(" {}", lines_count).as_str());
+    }
+
     println!("{} {}", result, file_location);
     Ok(())
 }
@@ -44,6 +52,16 @@ fn count_bytes_in_file(file: &mut File) -> io::Result<usize> {
     let bytes_count = file.read_to_end(&mut buffer)?;
 
     Ok(bytes_count)
+}
+
+fn count_lines_in_file(file: &mut File) -> io::Result<usize> {
+    let mut lines_count = 0;
+
+    for line in io::BufReader::new(file).lines() {
+        lines_count += 1;
+    }
+
+    Ok(lines_count)
 }
 
 #[cfg(test)]
@@ -57,5 +75,14 @@ mod tests {
         let bytes_count = count_bytes_in_file(&mut file).unwrap();
 
         assert_eq!(bytes_count, 342190);
+    }
+
+    #[test]
+    fn it_should_count_lines_in_a_file() {
+        let mut file = std::fs::File::open("./test.txt").unwrap();
+
+        let lines_count = crate::count_lines_in_file(&mut file).unwrap();
+
+        assert_eq!(lines_count, 7145);
     }
 }
