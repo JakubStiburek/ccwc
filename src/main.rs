@@ -14,7 +14,7 @@ struct CCWCArgs {
     #[arg(short, help = "Print the count of words in the file")]
     words: bool,
 
-    #[arg(required = true)]
+    #[arg(required = false)]
     file_path: Option<std::path::PathBuf>,
 }
 
@@ -22,6 +22,8 @@ fn main() -> io::Result<()> {
     let mut result = String::new();
     let args = CCWCArgs::parse();
     let mut file_location = String::new();
+    let mut stdin_text = String::new();
+    let mut file: Option<File> = None;
 
     if let Some(path) = args.file_path {
         if let Some(path_as_string) = path.to_str() {
@@ -29,39 +31,59 @@ fn main() -> io::Result<()> {
         } else {
             Err(io::Error::new(io::ErrorKind::Other, "Invalid file path"))?;
         }
-    } else {
-        stdin().read_line(&mut file_location)?;
-        Err(io::Error::new(io::ErrorKind::Other, "No file path provided"))?;
+
+        file = Some(File::open(file_location.trim())?);
     }
 
-    let mut file = File::open(file_location.trim())?;
-
     if args.count_bytes {
-        let bytes_count = count_bytes_in_file(&mut file)?;
-        file.seek(SeekFrom::Start(0))?;
-        result.push_str(&bytes_count.to_string());
+        if let Some(file) = &mut file {
+            let bytes_count = count_bytes_in_file(file)?;
+            file.seek(SeekFrom::Start(0))?;
+            result.push_str(&bytes_count.to_string());
+        } else {
+            stdin().read_to_string(&mut stdin_text)?;
+            result.push_str(&stdin_text.len().to_string());
+        }
     }
 
     if args.lines {
-        let lines_count = count_lines_in_file(&mut file)?;
-        file.seek(SeekFrom::Start(0))?;
-        result.push_str(&format!(" {}", lines_count).as_str());
+        if let Some(file) = &mut file {
+            let lines_count = count_lines_in_file(file)?;
+            file.seek(SeekFrom::Start(0))?;
+            result.push_str(&format!(" {}", lines_count).as_str());
+        } else {
+            stdin().read_to_string(&mut stdin_text)?;
+            let lines_count = stdin_text.lines().count();
+            result.push_str(&format!(" {}", lines_count).as_str());
+        }
     }
 
     if args.words {
-        let words_count = count_words_in_file(&mut file)?;
-        file.seek(SeekFrom::Start(0))?;
-        result.push_str(&format!(" {}", words_count).as_str());
+        if let Some(file) = &mut file {
+            let words_count = count_words_in_file(file)?;
+            file.seek(SeekFrom::Start(0))?;
+            result.push_str(&format!(" {}", words_count).as_str());
+        } else {
+            stdin().read_to_string(&mut stdin_text)?;
+            let words_count = stdin_text.split_whitespace().count();
+            result.push_str(&format!(" {}", words_count).as_str());
+        }
     }
 
     if !args.count_bytes && !args.lines && !args.words {
-        let bytes_count = count_bytes_in_file(&mut file)?;
-        file.seek(SeekFrom::Start(0))?;
-        let lines_count = count_lines_in_file(&mut file)?;
-        file.seek(SeekFrom::Start(0))?;
-        let words_count = count_words_in_file(&mut file)?;
-        file.seek(SeekFrom::Start(0))?;
-        result.push_str(&format!("{} {} {}", bytes_count, lines_count, words_count))
+        if let Some(file) = &mut file {
+            let bytes_count = count_bytes_in_file(file)?;
+            let lines_count = count_lines_in_file(file)?;
+            let words_count = count_words_in_file(file)?;
+            file.seek(SeekFrom::Start(0))?;
+            result.push_str(&format!(" {} {} {}", lines_count, words_count, bytes_count).as_str());
+        } else {
+            stdin().read_to_string(&mut stdin_text)?;
+            let bytes_count = stdin_text.len();
+            let lines_count = stdin_text.lines().count();
+            let words_count = stdin_text.split_whitespace().count();
+            result.push_str(&format!(" {} {} {}", lines_count, words_count, bytes_count).as_str());
+        }
     }
 
     println!("{} {}", result, file_location);
