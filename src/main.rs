@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{self, BufRead, Read, stdin};
+use std::io::{self, BufRead, Read, SeekFrom, stdin, Seek};
 use clap::Parser;
 
 #[derive(Parser, Debug)]
@@ -38,17 +38,30 @@ fn main() -> io::Result<()> {
 
     if args.count_bytes {
         let bytes_count = count_bytes_in_file(&mut file)?;
+        file.seek(SeekFrom::Start(0))?;
         result.push_str(&bytes_count.to_string());
     }
 
     if args.lines {
         let lines_count = count_lines_in_file(&mut file)?;
+        file.seek(SeekFrom::Start(0))?;
         result.push_str(&format!(" {}", lines_count).as_str());
     }
 
     if args.words {
         let words_count = count_words_in_file(&mut file)?;
+        file.seek(SeekFrom::Start(0))?;
         result.push_str(&format!(" {}", words_count).as_str());
+    }
+
+    if !args.count_bytes && !args.lines && !args.words {
+        let bytes_count = count_bytes_in_file(&mut file)?;
+        file.seek(SeekFrom::Start(0))?;
+        let lines_count = count_lines_in_file(&mut file)?;
+        file.seek(SeekFrom::Start(0))?;
+        let words_count = count_words_in_file(&mut file)?;
+        file.seek(SeekFrom::Start(0))?;
+        result.push_str(&format!("{} {} {}", bytes_count, lines_count, words_count))
     }
 
     println!("{} {}", result, file_location);
