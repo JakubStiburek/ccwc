@@ -11,6 +11,9 @@ struct CCWCArgs {
     #[arg(short, help = "Print the count of lines in the file")]
     lines: bool,
 
+    #[arg(short, help = "Print the count of words in the file")]
+    words: bool,
+
     #[arg(required = true)]
     file_path: Option<std::path::PathBuf>,
 }
@@ -43,6 +46,11 @@ fn main() -> io::Result<()> {
         result.push_str(&format!(" {}", lines_count).as_str());
     }
 
+    if args.words {
+        let words_count = count_words_in_file(&mut file)?;
+        result.push_str(&format!(" {}", words_count).as_str());
+    }
+
     println!("{} {}", result, file_location);
     Ok(())
 }
@@ -57,11 +65,23 @@ fn count_bytes_in_file(file: &mut File) -> io::Result<usize> {
 fn count_lines_in_file(file: &mut File) -> io::Result<usize> {
     let mut lines_count = 0;
 
-    for line in io::BufReader::new(file).lines() {
+    for _ in io::BufReader::new(file).lines() {
         lines_count += 1;
     }
 
     Ok(lines_count)
+}
+
+fn count_words_in_file(file: &mut File) -> io::Result<usize> {
+    let mut words_count = 0;
+
+    for line in io::BufReader::new(file).lines() {
+        let line = line?;
+        let words = line.split_whitespace();
+        words_count += words.count();
+    }
+
+    Ok(words_count)
 }
 
 #[cfg(test)]
@@ -84,5 +104,14 @@ mod tests {
         let lines_count = crate::count_lines_in_file(&mut file).unwrap();
 
         assert_eq!(lines_count, 7145);
+    }
+
+    #[test]
+    fn it_should_count_words_in_a_file() {
+        let mut file = std::fs::File::open("./test.txt").unwrap();
+
+        let words_count = crate::count_words_in_file(&mut file).unwrap();
+
+        assert_eq!(words_count, 58164);
     }
 }
